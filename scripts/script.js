@@ -61,57 +61,141 @@ function addCanvas(streamId) {
   );
 }
 
+var rtc = {
+  client: null,
+  joined: false,
+  published: false,
+  localStream: null,
+  remoteStreams: [],
+  params: {},
+};
+
+var option = {
+  appID: "de94b2bb7d2b4657949186c20f531eee",
+  channel: "Channel name",
+  uid: null,
+  token:
+    "006de94b2bb7d2b4657949186c20f531eeeIAA9JbCC2uVK1eWntwdC5prinxihLEbRXtTdw4bu+QGozprNu8cAAAAAEAC+3ac7XM8ZXwEAAQBezxlf",
+};
+
+rtc.client = AgoraRTC.createClient({ mode: "rtc", codec: "h264" });
+
+// Initialize the client
+rtc.client.init(
+  option.appID,
+  function () {
+    console.log("init success");
+  },
+  (err) => {
+    console.error(err);
+  }
+);
 // Client Setup
 // Defines a client for RTC
-let client = AgoraRTC.createClient({
-  mode: "live",
-  codec: "h264",
-});
+// let client = AgoraRTC.createClient({
+//   mode: "live",
+//   codec: "h264",
+// });
 
 // Client Setup
 // Defines a client for Real Time Communication
-client.init(
-  "de94b2bb7d2b4657949186c20f531eee",
-  () => console.log("AgoraRTC client initialized"),
-  handleFail
-);
+// client.init(
+//   "de94b2bb7d2b4657949186c20f531eee",
+//   () => console.log("AgoraRTC client initialized"),
+//   handleFail
+// );
 
 // The client joins the channel
-client.join(
-  null,
-  "any-channel",
-  null,
-  (uid) => {
-    // Stream object associated with your web cam is initialized
-    let localStream = AgoraRTC.createStream({
-      streamID: uid,
-      audio: true,
-      video: true,
-      screen: false,
-    });
-
-    // Associates the stream to the client
-    localStream.init(function () {
-      //Plays the localVideo
-      localStream.play("me");
-
-      //Publishes the stream to the channel
-      client.publish(localStream, handleFail);
-    }, handleFail);
+rtc.client.join(
+  option.token,
+  option.channel,
+  option.uid,
+  function (uid) {
+    console.log("join channel: " + option.channel + " success, uid: " + uid);
+    rtc.params.uid = uid;
   },
-  handleFail
+  function (err) {
+    console.error("client join failed", err);
+  }
 );
+
+rtc.localStream = AgoraRTC.createStream({
+  streamID: rtc.params.uid,
+  audio: true,
+  video: true,
+  screen: false,
+});
+
+// Initialize the local stream
+rtc.localStream.init(
+  function () {
+    console.log("init local stream success");
+    // play stream with html element id "local_stream"
+    rtc.localStream.play("local_stream");
+  },
+  function (err) {
+    console.error("init local stream failed ", err);
+  }
+);
+
+rtc.client.publish(rtc.localStream, function (err) {
+  console.log("publish failed");
+  console.error(err);
+});
+
+rtc.client.on("stream-added", function (evt) {
+  var remoteStream = evt.stream;
+  var id = remoteStream.getId();
+  if (id !== rtc.params.uid) {
+    rtc.client.subscribe(remoteStream, function (err) {
+      console.log("stream subscribe failed", err);
+    });
+  }
+  console.log("stream-added remote-uid: ", id);
+});
+
+rtc.client.on("stream-removed", function (evt) {
+  var remoteStream = evt.stream;
+  var id = remoteStream.getId();
+  // Stop playing the remote stream.
+  remoteStream.stop("remote_video_" + id);
+  // Remove the view of the remote stream.
+  removeView(id);
+  console.log("stream-removed remote-uid: ", id);
+});
+
+rtc.client.leave(
+  function () {
+    // Stop playing the local stream
+    rtc.localStream.stop();
+    // Close the local stream
+    rtc.localStream.close();
+    // Stop playing the remote streams and remove the views
+    while (rtc.remoteStreams.length > 0) {
+      var stream = rtc.remoteStreams.shift();
+      var id = stream.getId();
+      stream.stop();
+      removeView(id);
+    }
+    console.log("client leaves channel success");
+  },
+  function (err) {
+    console.log("channel leave failed");
+    console.error(err);
+  }
+);
+
 //When a stream is added to a channel
-client.on("stream-added", function (evt) {
-  client.subscribe(evt.stream, handleFail);
-});
+// client.on("stream-added", function (evt) {
+//   client.subscribe(evt.stream, handleFail);
+// });
 //When you subscribe to a stream
-client.on("stream-subscribed", function (evt) {
-  let stream = evt.stream;
-  addVideoStream(stream.getId());
-  stream.play(stream.getId());
-  addCanvas(stream.getId());
-});
+// client.on("stream-subscribed", function (evt) {
+//   let stream = evt.stream;
+//   addVideoStream(stream.getId());
+//   stream.play(stream.getId());
+//   addCanvas(stream.getId());
+// });
 //When a person is removed from the stream
-client.on("stream-removed", removeVideoStream);
-client.on("peer-leave", removeVideoStream);
+// client.on("stream-removed", removeVideoStream);
+// client.on("peer-leave", removeVideoStream);
