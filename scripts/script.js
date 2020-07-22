@@ -72,10 +72,10 @@ var rtc = {
 
 var option = {
   appID: "de94b2bb7d2b4657949186c20f531eee",
-  channel: "AgoraVideo",
+  channel: "AgoraChat",
   uid: null,
   token:
-    "006de94b2bb7d2b4657949186c20f531eeeIAA9JbCC2uVK1eWntwdC5prinxihLEbRXtTdw4bu+QGozprNu8cAAAAAEAC+3ac7XM8ZXwEAAQBezxlf",
+    "006de94b2bb7d2b4657949186c20f531eeeIADiLLMoGmP1r6LJMVumMEQF/Gc/MbmX/3Y5zt+J/e43afvmY44AAAAAEAC+3ac7veAZXwEAAQC/4Blf",
 };
 
 rtc.client = AgoraRTC.createClient({ mode: "rtc", codec: "h264" });
